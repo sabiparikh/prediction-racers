@@ -1,124 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset='UTF-8'>
 <title>Prediction Racers</title>
 <style>
-body{margin:0;font-family:Arial;background:#cfefff;text-align:center}
+body{margin:0;background:#cfefff;font-family:Arial;text-align:center}
 h1{margin-top:10px}
-.progress{width:80%;height:25px;background:#eee;margin:10px auto;border-radius:20px;overflow:hidden}
+.progress{width:80%;height:24px;background:#eee;margin:8px auto;border-radius:20px;overflow:hidden}
 .bar{height:100%;width:0%;background:#4caf50}
-.robot{color:#333;font-weight:bold}
 button{padding:15px 25px;margin:10px;font-size:18px;border:none;border-radius:10px;cursor:pointer}
-#playAgain{font-size:26px;background:#ffcc00;display:none;margin:20px auto}
+#playAgain{font-size:28px;background:#ffcc00;margin:20px auto;display:none}
 #gameover{font-size:40px;color:red;display:none}
+canvas{position:fixed;top:0;left:0;pointer-events:none}
 </style>
 </head>
 <body>
-<h1 id="levelTitle">Level 1 - Easy</h1>
-<div class="robot">Robot 1</div>
-<div class="progress"><div id="robot1" class="bar"></div></div>
-<div class="robot">Robot 2</div>
-<div class="progress"><div id="robot2" class="bar"></div></div>
-<div class="robot">You</div>
-<div class="progress"><div id="player" class="bar"></div></div>
-
-<h2 id="question"></h2>
-<div id="options"></div>
-<div id="gameover">💀 GAME OVER</div>
-<button id="playAgain" onclick="startGame()">PLAY AGAIN</button>
-
-<canvas id="confetti"></canvas>
-
+<h1 id='levelTitle'></h1>
+<div>Robot 1</div><div class='progress'><div id='r1' class='bar'></div></div>
+<div>Robot 2</div><div class='progress'><div id='r2' class='bar'></div></div>
+<div>You</div><div class='progress'><div id='player' class='bar'></div></div>
+<h2 id='question'></h2>
+<div id='options'></div>
+<div id='gameover'>💀 GAME OVER</div>
+<button id='playAgain' onclick='startGame()'>PLAY AGAIN</button>
+<canvas id='confetti'></canvas>
 <script>
 const levels=[
-{title:"Level 1 - Easy",qs:[
-{q:"Action = pulled out a block from the base of a building",opts:["The building fell","The building is erect","The building is wobbly"],a:0},
-{q:"Action = turned a gear clockwise. That gear is connected to another gear",opts:["The other gear turned clockwise","The other gear turned anti - clockwise","The other gear didn’t turn at all"],a:1},
-{q:"Action = Pulling a rope in a game of tug and war",opts:["Makes not difference in the game","Makes the other side topple over","Helps your team win the game"],a:2}
+{title:'Level 1 - Easy',qs:[
+{q:'Action = pulled out a block from the base of a building',opts:['The building fell','The building is erect','The building is wobbly'],a:0},
+{q:'Action = turned a gear clockwise. That gear is connected to another gear',opts:['The other gear turned clockwise','The other gear turned anti - clockwise','The other gear didn’t turn at all'],a:1},
+{q:'Action = Pulling a rope in a game of tug and war',opts:['Makes not difference in the game','Makes the other side topple over','Helps your team win the game'],a:2}
 ]},
-{title:"Level 2 - Medium",qs:[
-{q:"Action = turned a gear clockwise which is connected to another gear which is connected to yet another gear.",opts:["The other gear turned clockwise","The other gear turned anti - clockwise","The other gear didn’t turn at all"],a:0},
-{q:"Action = You mix baking soda and vinegar",opts:["Carbon dioxide is formed","Oxygen is formed","Nitrogen is formed"],a:0},
-{q:"Action = You mix vinegar and milk",opts:["The milk turns sour","The milk becomes paneer","The milk becomes dried up"],a:1}
+{title:'Level 2 - Medium',qs:[
+{q:'Action = turned a gear clockwise which is connected to another gear which is connected to yet another gear.',opts:['The other gear turned clockwise','The other gear turned anti - clockwise','The other gear didn’t turn at all'],a:0},
+{q:'Action = You mix baking soda and vinegar',opts:['Carbon dioxide is formed','Oxygen is formed','Nitrogen is formed'],a:0},
+{q:'Action = You mix vinegar and milk',opts:['The milk turns sour','The milk becomes paneer','The milk becomes dried up'],a:1}
 ]},
-{title:"Level 3 - Hard",qs:[
-{q:"Action = Pushing one domino in a chain of equidistance dominos",opts:["All the dominos fall","No dominos fall","Neither"],a:0},
-{q:"Action = turned a gear which is connected to three other gears in a chain anticlockwise",opts:["The last gear turns anti - clockwise","The last gear turns clockwise","Neither"],a:1},
-{q:"Action = Plant receives sunlight and water",opts:["The plant becomes dried up","The plant produces food","The plant’s roots start rotting"],a:1}
+{title:'Level 3 - Hard',qs:[
+{q:'Action = Pushing one domino in a chain of equidistance dominos',opts:['All the dominos fall','No dominos fall','Neither'],a:0},
+{q:'Action = turned a gear which is connected to three other gears in a chain anticlockwise',opts:['The last gear turns anti - clockwise','The last gear turns clockwise','Neither'],a:1},
+{q:'Action = Plant receives sunlight and water',opts:['The plant becomes dried up','The plant produces food','The plant’s roots start rotting'],a:1}
 ]}];
 
-let lvl,qi,playerProg,robot1Prog,robot2Prog,robotsInterval,gameActive;
+let lvl,qi,playerP,r1P,r2P,robotTimer,gameOn;
+const canvas=document.getElementById('confetti');
+const ctx=canvas.getContext('2d');canvas.width=innerWidth;canvas.height=innerHeight;
+let confetti=[],confettiOn=false;
+function makeConfetti(){confettiOn=true;confetti=[];for(let i=0;i<200;i++)confetti.push({x:Math.random()*canvas.width,y:-20,r:Math.random()*6+4,s:Math.random()*3+2});}
+function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);if(confettiOn){confetti.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='hsl('+Math.random()*360+',100%,50%)';ctx.fill();p.y+=p.s;if(p.y>canvas.height)p.y=-10});}requestAnimationFrame(draw);}draw();
 
 function shuffle(a){return a.sort(()=>Math.random()-0.5)}
-
-function startGame(){
-clearInterval(robotsInterval);
-document.getElementById('gameover').style.display='none';
-document.getElementById('playAgain').style.display='none';
-lvl=0;startLevel();
-}
-
-function startLevel(){
-playerProg=robot1Prog=robot2Prog=0;gameActive=true;
-document.getElementById('player').style.width='0%';
-document.getElementById('robot1').style.width='0%';
-document.getElementById('robot2').style.width='0%';
-document.getElementById('levelTitle').innerText=levels[lvl].title;
-levels[lvl].qs=shuffle(levels[lvl].qs);
-qi=0;showQ();startRobots();
-}
-
-function startRobots(){
-robotsInterval=setInterval(()=>{
-if(!gameActive) return;
-robot1Prog+=Math.random()*4;
-robot2Prog+=Math.random()*4;
-updateBars();
-if(robot1Prog>=100||robot2Prog>=100) endGame();
-},400);
-}
-
-function showQ(){
-let q=levels[lvl].qs[qi];
-document.getElementById('question').innerText=q.q;
-let optDiv=document.getElementById('options'); optDiv.innerHTML='';
-q.opts.forEach((o,i)=>{
-let b=document.createElement('button'); b.innerText=o;
-b.onclick=()=>answer(i);
-optDiv.appendChild(b);
-});
-}
-
-function answer(i){
-if(!gameActive) return;
-let q=levels[lvl].qs[qi];
-if(i===q.a){playerProg+=34;updateBars();confettiBurst();
-qi++; if(qi>=levels[lvl].qs.length){lvl++; if(lvl>=levels.length){alert('🏆 Champion!');startGame();return;} startLevel();} else showQ();}
-else endGame();
-}
-
-function updateBars(){
-document.getElementById('player').style.width=playerProg+'%';
-document.getElementById('robot1').style.width=robot1Prog+'%';
-document.getElementById('robot2').style.width=robot2Prog+'%';
-}
-
-function endGame(){
-gameActive=false; clearInterval(robotsInterval);
-document.getElementById('gameover').style.display='block';
-document.getElementById('playAgain').style.display='block';
-}
-
-// Confetti
-const canvas=document.getElementById('confetti');
-const ctx=canvas.getContext('2d'); canvas.width=window.innerWidth; canvas.height=window.innerHeight;
-let pieces=[];
-function confettiBurst(){for(let i=0;i<150;i++) pieces.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height/2,r:Math.random()*6+4,d:Math.random()*10});}
-function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);
-pieces.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='hsl('+Math.random()*360+',100%,50%)';ctx.fill();p.y+=p.d;if(p.y>canvas.height)p.y=0});requestAnimationFrame(draw);} draw();
-
+function startGame(){document.getElementById('gameover').style.display='none';document.getElementById('playAgain').style.display='none';lvl=0;startLevel();}
+function startLevel(){playerP=r1P=r2P=0;gameOn=true;updateBars();levels[lvl].qs=shuffle(levels[lvl].qs);qi=0;document.getElementById('levelTitle').innerText=levels[lvl].title;showQ();robotTimer=setInterval(()=>{if(!gameOn)return;r1P+=Math.random()*5;r2P+=Math.random()*5;updateBars();if(r1P>=100||r2P>=100)endGame();},350);}
+function showQ(){confettiOn=false;let q=levels[lvl].qs[qi];question.innerText=q.q;options.innerHTML='';q.opts.forEach((o,i)=>{let b=document.createElement('button');b.innerText=o;b.onclick=()=>answer(i);options.appendChild(b);});}
+function answer(i){if(!gameOn)return;let q=levels[lvl].qs[qi];if(i===q.a){playerP+=34;updateBars();makeConfetti();setTimeout(()=>{qi++;if(qi>=levels[lvl].qs.length){lvl++;if(lvl>=levels.length){alert('🏆 Champion!');startGame();return;}startLevel();}else showQ();},1200);}else endGame();}
+function updateBars(){player.style.width=playerP+'%';r1.style.width=r1P+'%';r2.style.width=r2P+'%';}
+function endGame(){gameOn=false;confettiOn=false;clearInterval(robotTimer);gameover.style.display='block';playAgain.style.display='block';}
 startGame();
 </script>
 </body>
