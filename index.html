@@ -5,54 +5,121 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prediction Racers</title>
 <style>
-body{margin:0;font-family:Arial;background:#dff3ff;text-align:center;overflow-x:hidden}
-#game{max-width:800px;margin:auto;padding:20px}
-.progress{height:22px;background:#eee;border-radius:20px;margin:10px 0;overflow:hidden}
-.bar{height:100%;width:0;background:linear-gradient(90deg,#6c8cff,#9ab0ff)}
-.optionBtn{padding:10px 20px;margin:8px;border:none;border-radius:10px;background:#6c8cff;color:white;cursor:pointer}
-.optionBtn:disabled{background:gray}
-#restartBtn{padding:18px 40px;font-size:24px;margin-top:15px;border:none;border-radius:16px;background:#ff7ac8;color:white;cursor:pointer;box-shadow:0 6px 0 #d85ea7}
-#restartBtn:active{transform:translateY(4px);box-shadow:0 2px 0 #d85ea7}
-#gameOver{font-size:44px;color:red;display:none;margin-top:10px}
-canvas{position:fixed;top:0;left:0;pointer-events:none}
+body{margin:0;font-family:Arial;background:#cfefff;text-align:center}
+h1{margin-top:10px}
+.progress{width:80%;height:25px;background:#eee;margin:10px auto;border-radius:20px;overflow:hidden}
+.bar{height:100%;width:0%;background:#4caf50}
+.robot{color:#333;font-weight:bold}
+button{padding:15px 25px;margin:10px;font-size:18px;border:none;border-radius:10px;cursor:pointer}
+#playAgain{font-size:26px;background:#ffcc00;display:none;margin:20px auto}
+#gameover{font-size:40px;color:red;display:none}
 </style>
 </head>
 <body>
-<canvas id="confetti"></canvas>
-<div id="game">
 <h1 id="levelTitle">Level 1 - Easy</h1>
-<h3>🤖 Robot 1</h3>
+<div class="robot">Robot 1</div>
 <div class="progress"><div id="robot1" class="bar"></div></div>
-<h3>🤖 Robot 2</h3>
+<div class="robot">Robot 2</div>
 <div class="progress"><div id="robot2" class="bar"></div></div>
-<h3>🧑 Player</h3>
+<div class="robot">You</div>
 <div class="progress"><div id="player" class="bar"></div></div>
+
 <h2 id="question"></h2>
 <div id="options"></div>
-<button id="restartBtn" onclick="restartGame()">PLAY AGAIN</button>
-<div id="gameOver">💀 GAME OVER</div>
-</div>
+<div id="gameover">💀 GAME OVER</div>
+<button id="playAgain" onclick="startGame()">PLAY AGAIN</button>
+
+<canvas id="confetti"></canvas>
+
 <script>
-const levels=[[{q:"Action = pulled out a block from the base of a building",a:"The building fell",o:["The building fell","The building is erect","The building is wobbly"]},{q:"Action = turned a gear clockwise. That gear is connected to another gear",a:"The other gear turned anti - clockwise",o:["The other gear turned clockwise","The other gear turned anti - clockwise","The other gear didn’t turn at all"]},{q:"Action = Pulling a rope in a game of tug and war",a:"Helps your team win the game",o:["Makes not difference in the game","Makes the other side topple over","Helps your team win the game"]}],[{q:"Action = Eating junk food everyday",a:"Makes you fat and unhealthy",o:["Makes you fat and unhealthy","Has no effect on you","Is good for you"]},{q:"Action = Learning new things everyday",a:"Makes you knowledgeable",o:["Makes no difference","Makes you knowledgeable","Makes you unknowledgeable"]},{q:"Action = Saving up money for a camera",a:"Helps you buy a camera in no time",o:["Helps you buy a camera in no time","Doesn’t help at all","Neither"]}],[{q:"Action = Pushing one domino in a chain of dominos",a:"All the dominos fall",o:["All the dominos fall","No dominos fall","Neither"]},{q:"Action = Cleaning and organizing the house",a:"The house looks squeaky clean",o:["The house remains dirty","The house looks squeaky clean","Neither"]},{q:"Action = Exercising everyday",a:"Your body becomes stronger",o:["Your body becomes fat","Your body gets very tired and weak","Your body becomes stronger"]}]];
-let level=0,questionIndex=0,progress={player:0,robot1:0,robot2:0},gameOver=false;
-function shuffle(arr){return arr.sort(()=>Math.random()-0.5)}
-levels.forEach(l=>shuffle(l));
+const levels=[
+{title:"Level 1 - Easy",qs:[
+{q:"Action = pulled out a block from the base of a building",opts:["The building fell","The building is erect","The building is wobbly"],a:0},
+{q:"Action = turned a gear clockwise. That gear is connected to another gear",opts:["The other gear turned clockwise","The other gear turned anti - clockwise","The other gear didn’t turn at all"],a:1},
+{q:"Action = Pulling a rope in a game of tug and war",opts:["Makes not difference in the game","Makes the other side topple over","Helps your team win the game"],a:2}
+]},
+{title:"Level 2 - Medium",qs:[
+{q:"Action = turned a gear clockwise which is connected to another gear which is connected to yet another gear.",opts:["The other gear turned clockwise","The other gear turned anti - clockwise","The other gear didn’t turn at all"],a:0},
+{q:"Action = You mix baking soda and vinegar",opts:["Carbon dioxide is formed","Oxygen is formed","Nitrogen is formed"],a:0},
+{q:"Action = You mix vinegar and milk",opts:["The milk turns sour","The milk becomes paneer","The milk becomes dried up"],a:1}
+]},
+{title:"Level 3 - Hard",qs:[
+{q:"Action = Pushing one domino in a chain of equidistance dominos",opts:["All the dominos fall","No dominos fall","Neither"],a:0},
+{q:"Action = turned a gear which is connected to three other gears in a chain anticlockwise",opts:["The last gear turns anti - clockwise","The last gear turns clockwise","Neither"],a:1},
+{q:"Action = Plant receives sunlight and water",opts:["The plant becomes dried up","The plant produces food","The plant’s roots start rotting"],a:1}
+]}];
 
-// BALANCED HARD ROBOTS (still tough but beatable)
-function startRobots(){robotInterval=setInterval(()=>{if(gameOver)return;progress.robot1+=1.5+Math.random()*1.5;progress.robot2+=1.5+Math.random()*1.5;updateBars();if(progress.robot1>=100||progress.robot2>=100)endGame();},450)}
-function updateBars(){robot1.style.width=progress.robot1+"%";robot2.style.width=progress.robot2+"%";player.style.width=progress.player+"%"}
-function showQuestion(){if(level>=levels.length){alert("🏆 You are the champion!");restartGame();return;}levelTitle.innerText=["Level 1 - Easy","Level 2 - Medium","Level 3 - Hard"][level];let data=levels[level][questionIndex];question.innerText=data.q;options.innerHTML="";data.o.forEach(opt=>{let btn=document.createElement("button");btn.innerText=opt;btn.className="optionBtn";btn.onclick=()=>answer(opt,data.a);options.appendChild(btn);});}
-function answer(choice,correct){if(gameOver)return;if(choice===correct){launchConfetti();progress.player+=34;questionIndex++;if(questionIndex>=levels[level].length){level++;questionIndex=0;progress.player=progress.robot1=progress.robot2=0;}updateBars();showQuestion();}else endGame();}
-function endGame(){gameOver=true;document.querySelectorAll(".optionBtn").forEach(b=>b.disabled=true);document.getElementById("gameOver").style.display="block";clearInterval(robotInterval)}
-function restartGame(){progress={player:0,robot1:0,robot2:0};level=0;questionIndex=0;gameOver=false;document.getElementById("gameOver").style.display="none";updateBars();startRobots();showQuestion()}
+let lvl,qi,playerProg,robot1Prog,robot2Prog,robotsInterval,gameActive;
 
-// REALISTIC CONFETTI
-const canvas=document.getElementById("confetti");const ctx=canvas.getContext("2d");canvas.width=innerWidth;canvas.height=innerHeight;let confetti=[];
-function launchConfetti(){confetti=[];const cols=20;const spacing=canvas.width/cols;for(let i=0;i<120;i++){let col=i%cols;confetti.push({x:col*spacing+Math.random()*spacing,y:-Math.random()*canvas.height,r:6+Math.random()*6,d:Math.random()*50,color:`hsl(${Math.random()*360},100%,50%)`});}}
-function drawConfetti(){ctx.clearRect(0,0,canvas.width,canvas.height);confetti.forEach((c,i)=>{ctx.beginPath();ctx.fillStyle=c.color;ctx.fillRect(c.x,c.y,c.r,c.r);c.y+=3;c.x+=Math.sin(c.d);if(c.y>canvas.height)confetti.splice(i,1);});requestAnimationFrame(drawConfetti)}
-drawConfetti();
+function shuffle(a){return a.sort(()=>Math.random()-0.5)}
 
-startRobots();showQuestion();
+function startGame(){
+clearInterval(robotsInterval);
+document.getElementById('gameover').style.display='none';
+document.getElementById('playAgain').style.display='none';
+lvl=0;startLevel();
+}
+
+function startLevel(){
+playerProg=robot1Prog=robot2Prog=0;gameActive=true;
+document.getElementById('player').style.width='0%';
+document.getElementById('robot1').style.width='0%';
+document.getElementById('robot2').style.width='0%';
+document.getElementById('levelTitle').innerText=levels[lvl].title;
+levels[lvl].qs=shuffle(levels[lvl].qs);
+qi=0;showQ();startRobots();
+}
+
+function startRobots(){
+robotsInterval=setInterval(()=>{
+if(!gameActive) return;
+robot1Prog+=Math.random()*4;
+robot2Prog+=Math.random()*4;
+updateBars();
+if(robot1Prog>=100||robot2Prog>=100) endGame();
+},400);
+}
+
+function showQ(){
+let q=levels[lvl].qs[qi];
+document.getElementById('question').innerText=q.q;
+let optDiv=document.getElementById('options'); optDiv.innerHTML='';
+q.opts.forEach((o,i)=>{
+let b=document.createElement('button'); b.innerText=o;
+b.onclick=()=>answer(i);
+optDiv.appendChild(b);
+});
+}
+
+function answer(i){
+if(!gameActive) return;
+let q=levels[lvl].qs[qi];
+if(i===q.a){playerProg+=34;updateBars();confettiBurst();
+qi++; if(qi>=levels[lvl].qs.length){lvl++; if(lvl>=levels.length){alert('🏆 Champion!');startGame();return;} startLevel();} else showQ();}
+else endGame();
+}
+
+function updateBars(){
+document.getElementById('player').style.width=playerProg+'%';
+document.getElementById('robot1').style.width=robot1Prog+'%';
+document.getElementById('robot2').style.width=robot2Prog+'%';
+}
+
+function endGame(){
+gameActive=false; clearInterval(robotsInterval);
+document.getElementById('gameover').style.display='block';
+document.getElementById('playAgain').style.display='block';
+}
+
+// Confetti
+const canvas=document.getElementById('confetti');
+const ctx=canvas.getContext('2d'); canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+let pieces=[];
+function confettiBurst(){for(let i=0;i<150;i++) pieces.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height/2,r:Math.random()*6+4,d:Math.random()*10});}
+function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);
+pieces.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='hsl('+Math.random()*360+',100%,50%)';ctx.fill();p.y+=p.d;if(p.y>canvas.height)p.y=0});requestAnimationFrame(draw);} draw();
+
+startGame();
 </script>
 </body>
 </html>
